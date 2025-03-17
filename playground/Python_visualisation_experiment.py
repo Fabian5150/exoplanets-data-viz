@@ -5,7 +5,7 @@ from numpy.ma.core import negative
 import plotly.subplots as sp
 
 # Load dataset
-file_path = "../data/nasa_aggregated.csv"  # Asegúrate de que el archivo esté en tu directorio de trabajo
+file_path = "../data/nasa_classified.csv"  # Asegúrate de que el archivo esté en tu directorio de trabajo
 df = pd.read_csv(file_path)
 
 # Filtrar planetas tipo "Earth-like"
@@ -29,13 +29,6 @@ while True:
         print("Invalid input, please enter a valid number.")
         continue  # Volver a pedir la selección del exoplaneta
 
-
-    # Añadir manualmente la Tierra al dataset
-    earth_data = {
-        "pl_name": "Earth",
-        "pl_rade": 1.0,  # Radio de la Tierra en radios terrestres
-        "pl_type": "Earth-like"
-    }
 
     # Function to generate a procedural texture with strong color separation
     def generate_texture(size, planet_type, seed):
