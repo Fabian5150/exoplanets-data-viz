@@ -1,0 +1,528 @@
+---
+title: "Exoplanets project"
+output: html_document
+date: "2025-03-17"
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Categories
+
+Here we have our first filtration: 
+We used planet radius and mass a basis for classification:
+- Earth-like:
+  Radius: 0.5 - 1.5 Earth radii
+  Mass: 0.5 - 5 Earth masses
+  Temperature: 
+  Likely to be rocky, similar to Earth.
+
+-Super-Earth:
+  Radius: 1.5 - 2.5 Earth radii
+  Mass: 5 - 10 Earth masses
+  Temperature: 
+  Larger than Earth but still possibly rocky.
+
+-Mini-Neptune:
+  Radius: 2.5 - 4 Earth radii
+  Mass: 10 - 50 Earth masses
+  Temperature: 
+  Likely to have thick atmospheres.
+  
+-Neptune-like:
+  Radius: 4 - 6 Earth radii
+  Mass: 50 - 100 Earth masses
+  Temperature:
+  Gas-dominated, similar to Neptune.
+  
+-Gas Giant:
+  Radius: >6 Earth radii
+  Mass: >100 Earth masses
+  Temperature: 
+  Similar to Jupiter & Saturn.
+
+Then we added the comparison with their Equlibrium Temperatures and Host Star Temperatures, to see whether they would be viable parameters.
+
+# Plots from metoring 2 - basic understanding the data 
+
+```{r}
+
+# Load required libraries
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+
+# Load dataset
+data <- read.csv("C:/Users/krali/Downloads/nasa_aggregated.csv")
+
+# Define planet types based on radius, mass, and temperature
+#should be done in preprocesing mby?
+
+classify_planet <- function(radius, mass, temp) {
+  if (is.na(radius) | is.na(mass) | is.na(temp)) {
+    return("Unknown")  # Assign "Unknown" if any value is NA
+  } else if (radius >= 0.5 & radius <= 1.5 & mass >= 0.5 & mass <= 5 & temp >= 180 & temp <= 370) {
+    return("Earth-like")
+  } else if (radius > 1.5 & radius <= 2.5 & mass > 5 & mass <= 10 & temp > 370 & temp <= 600) {
+    return("Super-Earth")
+  } else if (radius > 2.5 & radius <= 4 & mass > 10 & mass <= 50 & temp > 600 & temp <= 1000) {
+    return("Mini-Neptune")
+  } else if (radius > 4 & radius <= 6 & mass > 50 & mass <= 100 & temp > 1000 & temp <= 1500) {
+    return("Neptune-like")
+  } else if (radius > 6 & mass > 100 & temp > 1500) {
+    return("Gas Giant")
+  } else {
+    return("Unknown")  # Default case if none of the conditions match
+  }
+}
+
+# Apply classification function
+data$Planet_Type <- mapply(classify_planet, data$pl_rade, data$pl_bmasse, data$pl_eqt)
+
+
+# 1. Scatter Plot: Mass vs. Radius with filtred data so it is visible
+# for planets with radius < 10
+filtered_data <- data %>% filter(pl_rade < 10)
+
+ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Exoplanet Mass vs. Radius (Radius < 10 Earth radii)", 
+       x = "Radius (Earth radii)", 
+       y = "Mass (Earth masses)") +
+  theme_minimal()
+
+#the same but without the uknown planets
+filtered_data <- data %>% filter(pl_rade < 10 & Planet_Type != "Unknown")
+
+ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Exoplanet Mass vs. Radius (Radius < 10 Earth radii)", 
+       x = "Radius (Earth radii)", 
+       y = "Mass (Earth masses)") +
+  theme_minimal()
+
+
+# 3. Boxplot: Temperature Distributions by Planet Type
+ggplot(data, aes(x = Planet_Type, y = pl_eqt, fill = Planet_Type)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Equilibrium Temperature by Planet Type", x = "Planet Type", y = "Equilibrium Temperature (K)") +
+  theme_minimal()
+
+
+# 5. Bar Chart: Number of Exoplanets by Type
+planet_counts <- data %>% group_by(Planet_Type) %>% summarise(count = n())
+
+ggplot(planet_counts, aes(x = Planet_Type, y = count, fill = Planet_Type)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Number of Exoplanets by Type", x = "Planet Type", y = "Count") +
+  theme_minimal()
+
+# 6. Bar Chart: Number of Exoplanets by Type - unknown excluded
+planet_counts <- data %>%
+  group_by(Planet_Type) %>%
+  summarise(count = n()) %>%
+  filter(Planet_Type != "Unknown")  # Exclude "Unknown" category
+
+ggplot(planet_counts, aes(x = Planet_Type, y = count, fill = Planet_Type)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
+  labs(title = "Number of Exoplanets by Type", x = "Planet Type", y = "Count") +
+  theme_minimal()
+
+
+# Print the number of Earth-like exoplanets
+earth_like_count <- planet_counts$count[planet_counts$Planet_Type == "Earth-like"]
+print(paste("Number of Earth-like exoplanets:", earth_like_count))
+
+earth_like_planets <- data %>%filter(Planet_Type == "Earth-like")
+ggplot(earth_like_planets, aes(x = pl_rade, y = pl_bmasse, size = pl_eqt)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Bubble Chart: Radius vs. Mass (Size by Temperature)",
+       x = "Planet Radius (Re)",
+       y = "Planet Mass (Me)",
+       size = "Equilibrium Temperature (K)") +
+  scale_size_continuous(range = c(2, 8)) +
+  theme_minimal() 
+
+
+ggplot(earth_like_planets, aes(x = pl_eqt, y = pl_bmasse, size = pl_rade)) +
+  geom_point(alpha = 0.7, color = "darkblue") +
+  labs(title = "Bubble Chart: Radius vs. Mass (250K ≤ Temperature ≤ 350K)",
+       x = "Equilibrium Temperature (K)",
+       y = "Planet Mass (Me)",
+       size = "  Planet Radius (Re)") +
+  scale_size_continuous(range = c(2, 8)) +
+  theme_minimal()
+```
+# Focus on the orbital periods 
+
+```{r}
+#Code with orbital periods
+
+# Filter data with orbital period < 600 days and radius < 10 Earth radii otherwise the plot is not good to read
+filtered_data <- data %>% filter(pl_orbper < 600, pl_rade < 10, Planet_Type != "Unknown")
+
+# 1. Scatter Plot: Orbital Period vs. Planet Radius
+ggplot(filtered_data, aes(x = pl_rade, y = pl_orbper, color = Planet_Type)) +
+  geom_point(alpha = 0.6) +
+  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Orbital Period vs. Planet Radius", 
+       x = "Planet Radius (Earth radii)", 
+       y = "Orbital Period (days)") +
+  theme_minimal()
+
+# 2. Boxplot: Orbital Period by Planet Type
+ggplot(filtered_data, aes(x = Planet_Type, y = pl_orbper, fill = Planet_Type)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Orbital Period by Planet Type", 
+       x = "Planet Type", 
+       y = "Orbital Period (days)") +
+  theme_minimal()
+
+# 3. Bubble Chart: Orbital Period vs. Planet Mass
+ggplot(filtered_data, aes(x = pl_orbper, y = pl_bmasse, size = pl_rade, color = Planet_Type)) +
+  geom_point(alpha = 0.6) +
+  scale_size_continuous(range = c(2, 8)) +
+  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  labs(title = "Bubble Chart: Orbital Period vs. Planet Mass (filtred)", 
+       x = "Orbital Period (days)", 
+       y = "Planet Mass (Earth masses)", 
+       size = "Planet Radius (Earth radii)") +
+  theme_minimal()
+
+# 4. Bar Chart: Number of Planets by Orbital Period Range
+data$orbital_period_range <- cut(data$pl_orbper, 
+                                 breaks = c(0, 10, 50, 100, 200, 500, 1000, Inf), 
+                                 labels = c("< 10 days", "10-50 days", "50-100 days", "100-200 days", "200-500 days", "500-1000 days", "> 1000 days"), 
+                                 right = FALSE)
+
+planet_counts_orbit <- data %>% group_by(orbital_period_range) %>% summarise(count = n())
+
+# Plot the bar chart without x-axis labels
+ggplot(planet_counts_orbit, aes(x = orbital_period_range, y = count, fill = orbital_period_range)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Number of Planets by Orbital Period Range (Unknown Excluded)", 
+       x = "Orbital Period Range", 
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())  # Remove x-axis labels
+
+
+
+
+```
+# Distance to the star graphs 
+We dont have the information about the earth-like planets so this can be used for the other categories.
+
+```{r}
+# Boxplot: Distance to the Closest Star by Planet Type
+ggplot(filtered_data, aes(x = Planet_Type, y = sy_dist, fill = Planet_Type)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
+  labs(title = "Distance to Closest Star by Planet Type", 
+       x = "Planet Type", 
+       y = "Distance to Closest Star (pc)") +
+  theme_minimal()
+
+# Bubble Chart: Distance to Closest Star vs. Planet Mass
+ggplot(filtered_data, aes(x = sy_dist, y = pl_bmasse, size = pl_rade, color = Planet_Type)) +
+  geom_point(alpha = 0.6) +
+  scale_size_continuous(range = c(2, 8)) +
+  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
+  labs(title = "Bubble Chart: Distance to Closest Star vs. Planet Mass", 
+       x = "Distance to Closest Star (pc)", 
+       y = "Planet Mass (Earth masses)", 
+       size = "Planet Radius (Earth radii)") +
+  theme_minimal()
+
+
+
+```
+# Understanding the planets that are earth-like by looking at the data of the 4 planets
+
+```{r}
+# Filter the dataset to get Earth-like planets
+earth_like_planets <- filtered_data %>% filter(Planet_Type == "Earth-like")
+
+# View the table of Earth-like planets
+print(earth_like_planets)
+
+```
+
+
+# Because all 4 of our earth like planets are in 1 solar system with 1 star so we can compare that one to the star
+
+```{r}
+library(dplyr)
+
+# Create a subset of data for Sun and TRAPPIST-1
+sun_data <- data.frame(
+  star = "Sun",
+  st_teff = 5778,        # Sun's effective temperature in Kelvin
+  st_rad = 1,            # Sun's radius in solar radii
+  st_mass = 1,           # Sun's mass in solar masses
+  st_lum = 1,            # Sun's luminosity in solar units
+  st_met = 0.014,        # Sun's metallicity
+  st_logg = 4.44         # Sun's surface gravity in log units
+)
+
+# TRAPPIST-1 data (You may need to pull the actual data from your dataset if available)
+trappist_data <- data %>%
+  filter(hostname == "TRAPPIST-1") %>%
+  select(st_teff, st_rad, st_mass, st_lum, st_met, st_logg) %>%
+  distinct() %>%
+  mutate(star = "TRAPPIST-1")
+
+# Combine Sun and TRAPPIST-1 data
+comparison_data <- bind_rows(sun_data, trappist_data)
+
+# Display the comparison data
+comparison_data
+
+```
+
+
+# Interactive stuff part one 
+- kinda working doesnt give an error when you add earth
+
+```{r}
+library(shiny)
+library(plotly)
+library(dplyr)
+
+ui <- fluidPage(
+  titlePanel("Exoplanet Comparison Dashboard"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "selected_category", 
+        "Select Planet Category:", 
+        choices = c("All", "Earth-like", "Super-Earth", "Mini-Neptune", "Neptune-like", "Gas Giant", "Unknown"),
+        selected = "All"
+      ),
+      selectInput(
+        "selected_planets", 
+        "Select Exoplanets:", 
+        choices = NULL,
+        multiple = TRUE
+      ),
+      actionButton("add_earth", "Add Earth for Comparision")  # Earth comparison button
+    ),
+    mainPanel(
+      plotlyOutput("radar_chart"),
+      plotlyOutput("bar_chart")
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  
+  earth_added <- reactiveVal(FALSE)  # Flag to check if Earth is added
+  
+  # Observe event when category changes to update available planet options
+  observeEvent(input$selected_category, {
+    df <- data %>%
+      mutate(Planet_Type = mapply(classify_planet, pl_rade, pl_bmasse, pl_eqt))
+    
+    if (input$selected_category != "All") {
+      df <- df %>% filter(Planet_Type == input$selected_category)
+    }
+    
+    updateSelectInput(session, "selected_planets", choices = unique(df$pl_name))
+  })
+  
+  # Update filtered data based on selected planets and category
+  filtered_data <- reactive({
+    req(input$selected_planets)
+    df <- data %>%
+      mutate(Planet_Type = mapply(classify_planet, pl_rade, pl_bmasse, pl_eqt))
+    
+    if (input$selected_category != "All") {
+      df <- df %>% filter(Planet_Type == input$selected_category)
+    }
+    
+    df %>% filter(pl_name %in% input$selected_planets)
+  })
+  
+  # Render the radar chart
+  output$radar_chart <- renderPlotly({
+    # Change to plot stellar radius instead of orbital period
+    df <- filtered_data() %>% select(pl_name, st_rad, pl_orbsmax, pl_rade, pl_bmasse)
+    df_long <- tidyr::pivot_longer(df, -pl_name, names_to = "Variable", values_to = "Value")
+    
+    # Add Earth data if button is pressed
+    if (earth_added()) {
+      earth_long <- data.frame(
+        pl_name = "Earth", 
+        Variable = c("st_rad", "pl_orbsmax", "pl_rade", "pl_bmasse"),  # Stellar radius included
+        Value = c(1, 1, 1, 1)  # Earth values for each variable
+      )
+      df_long <- rbind(df_long, earth_long)
+    }
+
+    plot_ly(df_long, r = ~Value, theta = ~Variable, color = ~pl_name, type = "scatterpolar", fill = "toself") %>%
+      layout(
+        title = "Radar Chart: Exoplanet and Stellar Features",
+        polar = list(radialaxis = list(visible = TRUE, range = c(0, max(df_long$Value))))
+      )
+  })
+  
+  # Render the bar chart
+  output$bar_chart <- renderPlotly({
+    df <- filtered_data()
+    plot_ly(df, x = ~pl_name, y = ~pl_masse, type = "bar", color = ~pl_name) %>%
+      layout(title = "Exoplanet Mass Comparison", yaxis = list(title = "Mass (Earth Masses)"))
+  })
+  
+  # Observe the Earth button click and set the flag
+  observeEvent(input$add_earth, {
+    earth_added(!earth_added())  # Toggle the Earth flag when the button is clicked
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
+
+# Interactive window 
+only problem with one plot if you add earth to it
+```{r}
+library(shiny)
+library(plotly)
+library(dplyr)
+library(tidyr)
+
+ui <- fluidPage(
+  titlePanel("🚀 Exoplanet Comparison Dashboard"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "selected_category", 
+        "🌍 Select Planet Category:", 
+        choices = c("All", "Earth-like", "Super-Earth", "Mini-Neptune", "Neptune-like", "Gas Giant", "Unknown"),
+        selected = "All"
+      ),
+      selectInput(
+        "selected_planets", 
+        "🪐 Select Exoplanets:", 
+        choices = NULL,
+        multiple = TRUE
+      ),
+      actionButton("add_earth", "🌎 Add Earth for Comparison")  
+    ),
+    mainPanel(
+      plotlyOutput("radar_chart"),
+      plotlyOutput("temperature_chart"),
+      plotlyOutput("orbital_period_chart"),  
+      uiOutput("planet_info")  
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  
+  earth_added <- reactiveVal(FALSE)  
+  
+  observeEvent(input$selected_category, {
+    df <- data %>%
+      mutate(Planet_Type = mapply(classify_planet, pl_rade, pl_bmasse, pl_eqt))
+    
+    if (input$selected_category != "All") {
+      df <- df %>% filter(Planet_Type == input$selected_category)
+    }
+    
+    updateSelectInput(session, "selected_planets", choices = unique(df$pl_name))
+  })
+  
+  filtered_data <- reactive({
+    req(input$selected_planets)
+    df <- data %>%
+      mutate(Planet_Type = mapply(classify_planet, pl_rade, pl_bmasse, pl_eqt))
+    
+    if (input$selected_category != "All") {
+      df <- df %>% filter(Planet_Type == input$selected_category)
+    }
+    
+    df %>% filter(pl_name %in% input$selected_planets)
+  })
+  
+  output$radar_chart <- renderPlotly({
+    df <- filtered_data() %>% select(pl_name, st_rad, pl_orbsmax, pl_rade, pl_bmasse)
+    df_long <- tidyr::pivot_longer(df, cols = c(st_rad, pl_orbsmax, pl_rade, pl_bmasse), names_to = "Variable", values_to = "Value")
+    
+    if (earth_added()) {
+      earth_long <- data.frame(
+        pl_name = "Earth", 
+        Variable = c("st_rad", "pl_orbsmax", "pl_rade", "pl_bmasse"),
+        Value = c(1, 1, 1, 1)
+      )
+      df_long <- rbind(df_long, earth_long)
+    }
+
+    plot_ly(df_long, r = ~Value, theta = ~Variable, color = ~pl_name, type = "scatterpolar", mode = "lines+markers", fill = "toself") %>%
+      layout(
+        title = "📊 Radar Chart: Exoplanet and Stellar Features",
+        polar = list(radialaxis = list(visible = TRUE, range = c(0, max(df_long$Value))))
+      )
+  })
+  
+  output$temperature_chart <- renderPlotly({
+    df <- filtered_data()
+    
+    if (earth_added()) {
+      earth_data <- data.frame(
+        pl_name = "Earth", 
+        pl_eqt = 288  
+      )
+      df <- rbind(df, earth_data)
+    }
+
+    plot_ly(df, x = ~pl_name, y = ~pl_eqt, type = "bar", color = ~pl_name) %>%
+      layout(title = "🌡️ Equilibrium Temperature Comparison", yaxis = list(title = "Temperature (K)"))
+  })
+  
+  output$orbital_period_chart <- renderPlotly({
+    df <- filtered_data()
+    
+    plot_ly(df, x = ~pl_name, y = ~pl_orbper, type = "bar", color = ~pl_name) %>%
+      layout(title = "🌀 Orbital Period Comparison", yaxis = list(title = "Orbital Period (Days)"))
+  })
+  
+  output$planet_info <- renderUI({
+    df <- filtered_data()
+    planet_info <- lapply(1:nrow(df), function(i) {
+      planet <- df[i, ]
+      tagList(
+        h4(paste0("🪐 ", planet$pl_name)),
+        p(strong("🌟 Star System:"), planet$hostname),
+        p(strong("🛸 Mass:"), planet$pl_masse, " Earth masses"),
+        p(strong("🔵 Radius:"), planet$pl_rade, " Earth radii"),
+        p(strong("🔥 Equilibrium Temperature:"), planet$pl_eqt, "K"),
+        p(strong("☀️ Insolation:"), planet$pl_insol),
+        p(strong("⏳ Orbital Period:"), planet$pl_orbper, " days"),
+        hr()
+      )
+    })
+    do.call(tagList, planet_info)
+  })
+  
+  observeEvent(input$add_earth, {
+    earth_added(!earth_added())  
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
+
+
+
