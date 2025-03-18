@@ -10,36 +10,48 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Categories
 
-Here we have our first filtration: 
-We used planet radius and mass a basis for classification:
-- Earth-like:
+Classification Criteria:
+
+Sub-Earth:
+  Radius: < 0.5 Earth radii
+  Mass: < 0.5 Earth masses
+  Temperature: 150 - 400K
+  Small, likely rocky planets.
+
+Earth-like:
   Radius: 0.5 - 1.5 Earth radii
   Mass: 0.5 - 5 Earth masses
-  Temperature: 
+  Temperature: 180 - 370K
   Likely to be rocky, similar to Earth.
 
--Super-Earth:
+Cold Super-Earth:
   Radius: 1.5 - 2.5 Earth radii
   Mass: 5 - 10 Earth masses
-  Temperature: 
+  Temperature: 100 - 180K
   Larger than Earth but still possibly rocky.
 
--Mini-Neptune:
+Hot Super-Earth:
+  Radius: 1.5 - 2.5 Earth radii
+  Mass: 5 - 10 Earth masses
+  Temperature: 370 - 800K
+  Larger than Earth but still possibly rocky.
+
+Mini-Neptune:
   Radius: 2.5 - 4 Earth radii
   Mass: 10 - 50 Earth masses
-  Temperature: 
+  Temperature: 300 - 1000K
   Likely to have thick atmospheres.
-  
--Neptune-like:
+
+Neptune-like:
   Radius: 4 - 6 Earth radii
   Mass: 50 - 100 Earth masses
-  Temperature:
+  Temperature: 500 - 1500K
   Gas-dominated, similar to Neptune.
-  
--Gas Giant:
-  Radius: >6 Earth radii
-  Mass: >100 Earth masses
-  Temperature: 
+
+Gas Giant:
+  Radius: > 6 Earth radii
+  Mass: > 100 Earth masses
+  Temperature: > 800K
   Similar to Jupiter & Saturn.
 
 Then we added the comparison with their Equlibrium Temperatures and Host Star Temperatures, to see whether they would be viable parameters.
@@ -54,29 +66,31 @@ library(ggplot2)
 library(dplyr)
 
 # Load dataset
-data <- read.csv("C:/Users/krali/Downloads/nasa_classified.csv")
+data <- read.csv("C:/Users/lalka/Downloads/nasa_classified.csv")
 
 # Define planet types based on radius, mass, and temperature
-#should be done in preprocesing mby?
 
 classify_planet <- function(radius, mass, temp) {
   if (is.na(radius) | is.na(mass) | is.na(temp)) {
     return("Unknown")  # Assign "Unknown" if any value is NA
+  } else if (radius < 0.5 & mass < 0.5 & temp >= 150 & temp <= 400) {
+    return("Sub-Earth")
   } else if (radius >= 0.5 & radius <= 1.5 & mass >= 0.5 & mass <= 5 & temp >= 180 & temp <= 370) {
     return("Earth-like")
-  } else if (radius > 1.5 & radius <= 2.5 & mass > 5 & mass <= 10 & temp > 370 & temp <= 600) {
-    return("Super-Earth")
-  } else if (radius > 2.5 & radius <= 4 & mass > 10 & mass <= 50 & temp > 600 & temp <= 1000) {
+  } else if (radius > 1.5 & radius <= 2.5 & mass > 5 & mass <= 10 & temp >= 100 & temp < 180) {
+    return("Cold Super-Earth")
+  } else if (radius > 1.5 & radius <= 2.5 & mass > 5 & mass <= 10 & temp > 370 & temp <= 800) {
+    return("Hot Super-Earth")
+  } else if (radius > 2.5 & radius <= 4 & mass > 10 & mass <= 50 & temp > 300 & temp <= 1000) {
     return("Mini-Neptune")
-  } else if (radius > 4 & radius <= 6 & mass > 50 & mass <= 100 & temp > 1000 & temp <= 1500) {
+  } else if (radius > 4 & radius <= 6 & mass > 50 & mass <= 100 & temp > 500 & temp <= 1500) {
     return("Neptune-like")
-  } else if (radius > 6 & mass > 100 & temp > 1500) {
+  } else if (radius > 6 & mass > 100 & temp > 800) {
     return("Gas Giant")
   } else {
-    return("Unknown")  # Default case if none of the conditions match
+    return("Unknown")
   }
 }
-
 # Apply classification function
 data$Planet_Type <- mapply(classify_planet, data$pl_rade, data$pl_bmasse, data$pl_eqt)
 
@@ -87,7 +101,7 @@ filtered_data <- data %>% filter(pl_rade < 10)
 
 ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
   geom_point(alpha = 0.5) +
-  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_color_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Exoplanet Mass vs. Radius (Radius < 10 Earth radii)", 
        x = "Radius (Earth radii)", 
        y = "Mass (Earth masses)") +
@@ -98,7 +112,7 @@ filtered_data <- data %>% filter(pl_rade < 10 & pl_bmasse < 150 & Planet_Type !=
 
 ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
   geom_point(alpha = 0.5) +
-  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_color_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Exoplanet Mass vs. Radius (Radius < 10 Earth radii)", 
        x = "Radius (Earth radii)", 
        y = "Mass (Earth masses)") +
@@ -108,7 +122,7 @@ ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
 # 3. Boxplot: Temperature Distributions by Planet Type
 ggplot(data, aes(x = Planet_Type, y = pl_eqt, fill = Planet_Type)) +
   geom_boxplot() +
-  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_fill_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Equilibrium Temperature by Planet Type", x = "Planet Type", y = "Equilibrium Temperature (K)") +
   theme_minimal()
 
@@ -118,7 +132,7 @@ planet_counts <- data %>% group_by(Planet_Type) %>% summarise(count = n())
 
 ggplot(planet_counts, aes(x = Planet_Type, y = count, fill = Planet_Type)) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_fill_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Number of Exoplanets by Type", x = "Planet Type", y = "Count") +
   theme_minimal()
 
@@ -130,7 +144,7 @@ planet_counts <- data %>%
 
 ggplot(planet_counts, aes(x = Planet_Type, y = count, fill = Planet_Type)) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
+  scale_fill_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
   labs(title = "Number of Exoplanets by Type", x = "Planet Type", y = "Count") +
   theme_minimal()
 
@@ -162,7 +176,7 @@ filtered_data <- data %>% filter(pl_orbper < 600, pl_rade < 10, Planet_Type != "
 # 1. Scatter Plot: Orbital Period vs. Planet Radius
 ggplot(filtered_data, aes(x = pl_rade, y = pl_orbper, color = Planet_Type)) +
   geom_point(alpha = 0.6) +
-  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_color_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Orbital Period vs. Planet Radius", 
        x = "Planet Radius (Earth radii)", 
        y = "Orbital Period (days)") +
@@ -171,7 +185,7 @@ ggplot(filtered_data, aes(x = pl_rade, y = pl_orbper, color = Planet_Type)) +
 # 2. Boxplot: Orbital Period by Planet Type
 ggplot(filtered_data, aes(x = Planet_Type, y = pl_orbper, fill = Planet_Type)) +
   geom_boxplot() +
-  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_fill_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Orbital Period by Planet Type", 
        x = "Planet Type", 
        y = "Orbital Period (days)") +
@@ -181,7 +195,7 @@ ggplot(filtered_data, aes(x = Planet_Type, y = pl_orbper, fill = Planet_Type)) +
 ggplot(filtered_data, aes(x = pl_orbper, y = pl_bmasse, size = pl_rade, color = Planet_Type)) +
   geom_point(alpha = 0.6) +
   scale_size_continuous(range = c(2, 8)) +
-  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
+  scale_color_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red", "Unknown" = "gray")) +
   labs(title = "Bubble Chart: Orbital Period vs. Planet Mass (filtred)", 
        x = "Orbital Period (days)", 
        y = "Planet Mass (Earth masses)", 
@@ -218,7 +232,7 @@ We dont have the information about the earth-like planets so this can be used fo
 # Boxplot: Distance to the Closest Star by Planet Type
 ggplot(filtered_data, aes(x = Planet_Type, y = sy_dist, fill = Planet_Type)) +
   geom_boxplot() +
-  scale_fill_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
+  scale_fill_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
   labs(title = "Distance to Closest Star by Planet Type", 
        x = "Planet Type", 
        y = "Distance to Closest Star (pc)") +
@@ -228,7 +242,7 @@ ggplot(filtered_data, aes(x = Planet_Type, y = sy_dist, fill = Planet_Type)) +
 ggplot(filtered_data, aes(x = sy_dist, y = pl_bmasse, size = pl_rade, color = Planet_Type)) +
   geom_point(alpha = 0.6) +
   scale_size_continuous(range = c(2, 8)) +
-  scale_color_manual(values = c("Earth-like" = "green", "Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
+  scale_color_manual(values = c("Sub-Earth"= "darkgreen", "Earth-like" = "green","Hot Super-Earth"="pink", "Cold Super-Earth" = "blue", "Mini-Neptune" = "purple", "Neptune-like" = "orange", "Gas Giant" = "red")) +
   labs(title = "Bubble Chart: Distance to Closest Star vs. Planet Mass", 
        x = "Distance to Closest Star (pc)", 
        y = "Planet Mass (Earth masses)", 
@@ -404,4 +418,57 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
+```
+```{r}
+# UI
+ui <- fluidPage(
+  titlePanel("Interactive Metallicity Visualization"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectizeInput("planet_type", "Select Planet Type:", 
+               choices = unique(data$Planet_Type), 
+               multiple = TRUE,
+               options = list(placeholder = 'Select a planet type')),
+      radioButtons("x_axis", "X-axis:", choices = c("Radius (pl_rade)" = "pl_rade", 
+                                                     "Mass (pl_bmasse)" = "pl_bmasse"), selected = "pl_rade")
+    ),
+    
+    mainPanel(
+      tabsetPanel(
+        tabPanel("Scatter Plot", plotlyOutput("scatterPlot")),
+        tabPanel("Metallicity Histogram", plotlyOutput("histogram"))
+      )
+    )
+  )
+)
+
+# Server
+server <- function(input, output) {
+  
+  filtered_data <- reactive({
+    data %>% filter(Planet_Type %in% input$planet_type)
+  })
+  
+  output$scatterPlot <- renderPlotly({
+    p <- ggplot(filtered_data(), aes_string(x = input$x_axis, y = "st_met", color = "Planet_Type")) +
+      geom_point(alpha = 0.7, size = 3) +
+      labs(x = input$x_axis, y = "Metallicity (st_met)", title = "Metallicity vs. Radius/Mass") +
+      theme_minimal()
+    
+    ggplotly(p)
+  })
+  
+  output$histogram <- renderPlotly({
+    p <- ggplot(filtered_data(), aes(x = st_met, fill = Planet_Type)) +
+      geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+      labs(x = "Metallicity (st_met)", y = "Count", title = "Distribution of Metallicity") +
+      theme_minimal()
+    
+    ggplotly(p)
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
 ```
