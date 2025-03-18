@@ -8,25 +8,12 @@ import plotly.subplots as sp
 file_path = "../data/nasa_classified.csv"  # Asegúrate de que el archivo esté en tu directorio de trabajo
 df = pd.read_csv(file_path)
 
-# Crear un DataFrame vacío para almacenar los exoplanetas más interesantes
-interesting_exoplanets = pd.DataFrame(columns=df.columns)
-
-# Filtrar exoplanetas no Earth-like
-non_earth_like_planets = df[df["pl_type"] != "Earth-like"].copy()
-
-# Seleccionar los más relevantes y añadirlos al DataFrame con pd.concat()
-interesting_exoplanets = pd.concat([
-    interesting_exoplanets,
-    non_earth_like_planets.loc[[non_earth_like_planets["pl_rade"].idxmax()]],
-    non_earth_like_planets.loc[[non_earth_like_planets["pl_rade"].idxmin()]],
-    non_earth_like_planets.loc[[non_earth_like_planets["pl_bmasse"].idxmax()]]
-], ignore_index=True)
-
-
+# Filtrar planetas tipo "Earth-like"
+earth_like_planets = df[df["pl_type"] == "Earth-like"].copy()
 
 while True:
-    print("\nSelect an interesting exoplanet:")
-    planet_names = interesting_exoplanets["pl_name"].unique()
+    print("\nSelect an Earth-like exoplanet:")
+    planet_names = earth_like_planets["pl_name"].unique()
     for i, planet in enumerate(planet_names):
         print(f"{i+1}. {planet}")
 
@@ -35,7 +22,7 @@ while True:
         if selection == 0:
             break  # Salir completamente del programa
         selected_planet = planet_names[selection - 1]
-        selected_row = interesting_exoplanets[interesting_exoplanets["pl_name"] == selected_planet].iloc[0]
+        selected_row = earth_like_planets[earth_like_planets["pl_name"] == selected_planet].iloc[0]
         print("\nSelected planet data:")
         print(selected_row)
     except (ValueError, IndexError):
@@ -123,19 +110,6 @@ while True:
     def update_figure(selected_param):
         values = parameters[selected_param]  # Get selected parameter values
         print(selected_param)
-
-        # Escalamos los radios para evitar problemas de visualización
-        min_radius = min(radius_km)
-        max_radius = max(radius_km)
-
-        # Definir un factor de escala para que la diferencia de tamaño sea manejable
-        scale_factor = 0.2 if max_radius / min_radius > 10 else 1  # Ajusta para evitar que un exoplaneta opaque la Tierra
-        scaled_earth_radius = radius_km[0] / 10000
-        scaled_exoplanet_radius = (radius_km[1] / 10000) * scale_factor
-
-        # Ajustar la separación en función del tamaño del exoplaneta
-        separation = max(scaled_exoplanet_radius * 2, 1.5)
-
         # Create new figure from scratch
         fig = sp.make_subplots(
             rows=1, cols=2,
@@ -144,10 +118,9 @@ while True:
         )
 
         # Add planets in 3D with procedural textures
-        fig.add_trace(create_sphere_with_texture(scaled_earth_radius, -separation, earth_texture), row=1,
-                      col=1)  # Earth
-        fig.add_trace(create_sphere_with_texture(scaled_exoplanet_radius, separation, exoplanet_texture), row=1,
-                      col=1)  # Exoplanet
+        fig.add_trace(create_sphere_with_texture(radius_km[0] / 10000, -1, earth_texture), row=1, col=1)  # Earth
+
+        fig.add_trace(create_sphere_with_texture(radius_km[1] / 10000, 1, exoplanet_texture), row=1, col=1)  # Exoplanet
 
         # Add bar chart for selected parameter
         fig.add_trace(go.Bar(
@@ -159,7 +132,7 @@ while True:
 
         # Update layout
         fig.update_layout(
-            title=f"Earth vs {selected_row['pl_name']} - {selected_param} Comparison",
+            title=f"Earth vs Exoplanet X - {selected_param} Comparison",
             scene=dict(
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
