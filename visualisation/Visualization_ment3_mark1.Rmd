@@ -327,6 +327,7 @@ ui <- fluidPage(
       plotlyOutput("radar_chart"),
       plotlyOutput("temperature_chart"),
       plotlyOutput("orbital_period_chart"),  
+      plotlyOutput("mass_temperature_chart"),
       uiOutput("planet_info")  
     )
   )
@@ -381,14 +382,30 @@ server <- function(input, output, session) {
   
   output$temperature_chart <- renderPlotly({
     df <- filtered_data()
+    
+    if (earth_added()) {
+      earth_data <- df[1, ]
+      earth_data$pl_name <- "Earth"
+      earth_data$pl_eqt <- 288
+      earth_data[, !names(earth_data) %in% c("pl_name", "pl_eqt")] <- NA
+      df <- rbind(df, earth_data)
+    }
 
     plot_ly(df, x = ~pl_name, y = ~pl_eqt, type = "bar", color = ~pl_name) %>%
-      layout(title = "🌡️ Equilibrium Temperature Comparison", yaxis = list(title = "Temperature (K)"))
+      layout(title = "🌡️ Exoplanet Temperature Comparison", yaxis = list(title = "Temperature (K)"))
   })
   
   output$orbital_period_chart <- renderPlotly({
     df <- filtered_data()
     
+    # if (earth_added()) {
+    #  earth_data <- df[1, ]
+    #   earth_data$pl_name <- "Earth"
+    #   earth_data$pl_orbper <- 365
+    #   earth_data[, !names(earth_data) %in% c("pl_name", "pl_orbper")] <- NA
+    #   df <- rbind(df, earth_data)
+    # }
+
     plot_ly(df, x = ~pl_name, y = ~pl_orbper, type = "bar", color = ~pl_name) %>%
       layout(title = "🌀 Orbital Period Comparison", yaxis = list(title = "Orbital Period (Days)"))
   })
@@ -398,14 +415,16 @@ server <- function(input, output, session) {
     planet_info <- lapply(1:nrow(df), function(i) {
       planet <- df[i, ]
       tagList(
-        h4(paste0("🪐 ", planet$pl_name)),
-        p(strong("🌟 Star System:"), planet$hostname),
-        p(strong("🛸 Mass:"), planet$pl_masse, " Earth masses"),
-        p(strong("🔵 Radius:"), planet$pl_rade, " Earth radii"),
-        p(strong("🔥 Equilibrium Temperature:"), planet$pl_eqt, "K"),
-        p(strong("☀️ Insolation:"), planet$pl_insol),
-        p(strong("⏳ Orbital Period:"), planet$pl_orbper, " days"),
-        hr()
+       h4(paste0("🪐 ", planet$pl_name)),
+      p(strong("🌟 Star System:"), planet$hostname),
+      p(strong("🛸 Mass:"), planet$pl_masse, " Earth masses"),
+      p(strong("🔵 Radius:"), planet$pl_rade, " Earth radii"),
+      p(strong("🔥 Equilibrium Temperature:"), planet$pl_eqt, "K"),
+      p(strong("☀️ Insolation:"), planet$pl_insol),
+      p(strong("⏳ Orbital Period:"), planet$pl_orbper, " days"),
+      p(strong("⚖️ Density:"), planet$pl_dens, " g/cm³"), 
+      p(strong("💫 Orbital Eccentricity:"), planet$pl_orbeccen),  
+      hr()
       )
     })
     do.call(tagList, planet_info)
