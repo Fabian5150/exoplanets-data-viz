@@ -1,5 +1,5 @@
 ---
-title: "Exoplanets project"
+title: "Exoplanets project - new "
 output: html_document
 date: "2025-03-17"
 runtime: shiny
@@ -54,7 +54,7 @@ library(ggplot2)
 library(dplyr)
 
 # Load dataset
-data <- read.csv("C:/Users/krali/Downloads/nasa_aggregated.csv")
+data <- read.csv("C:/Users/krali/Downloads/nasa_classified.csv")
 
 # Define planet types based on radius, mass, and temperature
 #should be done in preprocesing mby?
@@ -94,7 +94,7 @@ ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
   theme_minimal()
 
 #the same but without the uknown planets
-filtered_data <- data %>% filter(pl_rade < 10 & Planet_Type != "Unknown")
+filtered_data <- data %>% filter(pl_rade < 10 & pl_bmasse < 150 & Planet_Type != "Unknown")
 
 ggplot(filtered_data, aes(x = pl_rade, y = pl_bmasse, color = Planet_Type)) +
   geom_point(alpha = 0.5) +
@@ -140,15 +140,6 @@ earth_like_count <- planet_counts$count[planet_counts$Planet_Type == "Earth-like
 print(paste("Number of Earth-like exoplanets:", earth_like_count))
 
 earth_like_planets <- data %>%filter(Planet_Type == "Earth-like")
-ggplot(earth_like_planets, aes(x = pl_rade, y = pl_bmasse, size = pl_eqt)) +
-  geom_point(alpha = 0.7) +
-  labs(title = "Bubble Chart: Radius vs. Mass (Size by Temperature)",
-       x = "Planet Radius (Re)",
-       y = "Planet Mass (Me)",
-       size = "Equilibrium Temperature (K)") +
-  scale_size_continuous(range = c(2, 8)) +
-  theme_minimal() 
-
 
 ggplot(earth_like_planets, aes(x = pl_eqt, y = pl_bmasse, size = pl_rade)) +
   geom_point(alpha = 0.7, color = "darkblue") +
@@ -159,7 +150,8 @@ ggplot(earth_like_planets, aes(x = pl_eqt, y = pl_bmasse, size = pl_rade)) +
   scale_size_continuous(range = c(2, 8)) +
   theme_minimal()
 ```
-# Focus on the orbital periods 
+
+## Focus on the orbital periods 
 
 ```{r}
 #Code with orbital periods
@@ -218,7 +210,8 @@ ggplot(planet_counts_orbit, aes(x = orbital_period_range, y = count, fill = orbi
 
 
 ```
-# Distance to the star graphs 
+
+## Distance to the star graphs 
 We dont have the information about the earth-like planets so this can be used for the other categories.
 
 ```{r}
@@ -245,7 +238,8 @@ ggplot(filtered_data, aes(x = sy_dist, y = pl_bmasse, size = pl_rade, color = Pl
 
 
 ```
-# Understanding the planets that are earth-like by looking at the data of the 4 planets
+
+## Understanding the planets that are earth-like by looking at the data of the 4 planets
 
 ```{r}
 # Filter the dataset to get Earth-like planets
@@ -257,7 +251,7 @@ print(earth_like_planets)
 ```
 
 
-# Because all 4 of our earth like planets are in 1 solar system with 1 star so we can compare that one to the star
+Because all 4 of our earth like planets are in 1 solar system with 1 star so we can compare that one to the star
 
 ```{r}
 library(dplyr)
@@ -289,111 +283,8 @@ comparison_data
 ```
 
 
-# Interactive stuff part one 
-- kinda working doesnt give an error when you add earth
+# Interactive stuff part one
 
-```{r}
-library(shiny)
-library(plotly)
-library(dplyr)
-
-ui <- fluidPage(
-  titlePanel("Exoplanet Comparison Dashboard"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput(
-        "selected_category", 
-        "Select Planet Category:", 
-        choices = c("All", "Earth-like", "Super-Earth", "Mini-Neptune", "Neptune-like", "Gas Giant", "Unknown"),
-        selected = "All"
-      ),
-      selectInput(
-        "selected_planets", 
-        "Select Exoplanets:", 
-        choices = NULL,
-        multiple = TRUE
-      ),
-      actionButton("add_earth", "Add Earth for Comparision")  # Earth comparison button
-    ),
-    mainPanel(
-      plotlyOutput("radar_chart"),
-      plotlyOutput("bar_chart")
-    )
-  )
-)
-
-server <- function(input, output, session) {
-  
-  earth_added <- reactiveVal(FALSE)  # Flag to check if Earth is added
-  
-  # Observe event when category changes to update available planet options
-  observeEvent(input$selected_category, {
-    df <- data %>%
-      mutate(Planet_Type = mapply(classify_planet, pl_rade, pl_bmasse, pl_eqt))
-    
-    if (input$selected_category != "All") {
-      df <- df %>% filter(Planet_Type == input$selected_category)
-    }
-    
-    updateSelectInput(session, "selected_planets", choices = unique(df$pl_name))
-  })
-  
-  # Update filtered data based on selected planets and category
-  filtered_data <- reactive({
-    req(input$selected_planets)
-    df <- data %>%
-      mutate(Planet_Type = mapply(classify_planet, pl_rade, pl_bmasse, pl_eqt))
-    
-    if (input$selected_category != "All") {
-      df <- df %>% filter(Planet_Type == input$selected_category)
-    }
-    
-    df %>% filter(pl_name %in% input$selected_planets)
-  })
-  
-  # Render the radar chart
-  output$radar_chart <- renderPlotly({
-    # Change to plot stellar radius instead of orbital period
-    df <- filtered_data() %>% select(pl_name, st_rad, pl_orbsmax, pl_rade, pl_bmasse)
-    df_long <- tidyr::pivot_longer(df, -pl_name, names_to = "Variable", values_to = "Value")
-    
-    # Add Earth data if button is pressed
-    if (earth_added()) {
-      earth_long <- data.frame(
-        pl_name = "Earth", 
-        Variable = c("st_rad", "pl_orbsmax", "pl_rade", "pl_bmasse"),  # Stellar radius included
-        Value = c(1, 1, 1, 1)  # Earth values for each variable
-      )
-      df_long <- rbind(df_long, earth_long)
-    }
-
-    plot_ly(df_long, r = ~Value, theta = ~Variable, color = ~pl_name, type = "scatterpolar", fill = "toself") %>%
-      layout(
-        title = "Radar Chart: Exoplanet and Stellar Features",
-        polar = list(radialaxis = list(visible = TRUE, range = c(0, max(df_long$Value))))
-      )
-  })
-  
-  # Render the bar chart
-  output$bar_chart <- renderPlotly({
-    df <- filtered_data()
-    plot_ly(df, x = ~pl_name, y = ~pl_masse, type = "bar", color = ~pl_name) %>%
-      layout(title = "Exoplanet Mass Comparison", yaxis = list(title = "Mass (Earth Masses)"))
-  })
-  
-  # Observe the Earth button click and set the flag
-  observeEvent(input$add_earth, {
-    earth_added(!earth_added())  # Toggle the Earth flag when the button is clicked
-  })
-}
-
-shinyApp(ui, server)
-
-```
-
-
-# Interactive window 
-only problem with one plot if you add earth to it
 ```{r}
 library(shiny)
 library(plotly)
@@ -476,14 +367,6 @@ server <- function(input, output, session) {
   
   output$temperature_chart <- renderPlotly({
     df <- filtered_data()
-    
-    if (earth_added()) {
-      earth_data <- data.frame(
-        pl_name = "Earth", 
-        pl_eqt = 288  
-      )
-      df <- rbind(df, earth_data)
-    }
 
     plot_ly(df, x = ~pl_name, y = ~pl_eqt, type = "bar", color = ~pl_name) %>%
       layout(title = "🌡️ Equilibrium Temperature Comparison", yaxis = list(title = "Temperature (K)"))
@@ -522,7 +405,3 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 ```
-
-
-
-
